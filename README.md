@@ -58,7 +58,7 @@ Position | Description
 16 | Recall in high pollution class after transformed regression to classification
 17 | F-score in high pollution class after transformed regression to classification
 
-* Compute regression results iteratevely using the function: `aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,regressors,regressor_names,weights=None)`
+* Compute regression results iteratively using the function: `aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,regressors,regressor_names,weights=None)`
 
 for more examples see `experiments.py`
 
