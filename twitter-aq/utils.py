@@ -26,7 +26,7 @@ def unzip_file(path,extract_path=None):
         print('{} extracted to {}'.format(path,extract_path))
         
 def windowed_dataset(dataset,window,function='sum'):
-    """ transforms a dataset to a windowed representation based on date and hour    columns
+    """ Aggregates the columns of a dataframe grouping them by hourly timesteps using 'date' and 'hour' columns.
     
     args:
     dataset -- a pandas dataset with date and hour columns
@@ -37,9 +37,8 @@ def windowed_dataset(dataset,window,function='sum'):
     nbins = int(24/window)
     bins = [i*window-1 for i in range((nbins+1))]
     group_names = ['window_'+str(i+1) for i in range(nbins)]
-    group_names
     dataset.reset_index(inplace=True)
-    dataset['window'] = pd.cut(dataset['hour'], bins, labels=group_names)
+    dataset['window'] = pd.cut(dataset['hour'], bins, labels=group_names) #create a helper column which is the name of the window each hour corresponds (e.g if window == 6 hour 10:00 correspnds to window2)
     dataset.drop('hour',axis=1,inplace=True)
     if function=='sum':
         dataset =dataset.groupby(['date','window']).sum()
@@ -51,38 +50,12 @@ def windowed_dataset(dataset,window,function='sum'):
         dataset =dataset.groupby(['date','window']).mean()
     return dataset
 
-
-def windowed_dataset(dataset,window,function='sum'):
-    """ transforms a dataset to a windowed representation based on date and hour columns
-    
-    args:
-    dataset -- a pandas dataset with date and hour columns
-    window -- the number of  aggregated timesteps(hours) (valid values: 6,12,24)
-    function -- aggregation method (default: sum)
-    """
-    
-    nbins = int(24/window)
-    bins = [i*window-1 for i in range((nbins+1))]
-    group_names = ['window_'+str(i+1) for i in range(nbins)]
-    group_names
-    dataset.reset_index(inplace=True)
-    dataset['window'] = pd.cut(dataset['hour'], bins, labels=group_names)
-    dataset.drop('hour',axis=1,inplace=True)
-    if function=='sum':
-        dataset =dataset.groupby(['date','window']).sum()
-    elif function=='max':
-        dataset =dataset.groupby(['date','window']).max()
-    elif function=='last':
-        dataset =dataset.groupby(['date','window']).last()
-    elif function=='mean':
-        dataset =dataset.groupby(['date','window']).mean()
-    return dataset
 
 def create_index_from_timestamps(dataset,window):
-    """Recreate a pandas index from the timestamps
+    """ Recreate a pandas index from the timestamps
     
     args:
-    dataset -- the raw dataset from read_csv function
+    dataset -- the raw dataframe from read_csv function
     window -- the window of the dataset (valid values: 6,12,24)
     """
 
@@ -98,7 +71,7 @@ def create_index_from_timestamps(dataset,window):
 
 
 def csv_format_to_sparse(vector,shape):
-    """Tranform csv sparse vector representation (index -> value) to csr_matrix
+    """ Tranforms tab seperated sparse vector representation (index -> value) to csr_matrix
     
     args:
     vector -- the csv vector representation 
@@ -111,18 +84,18 @@ def csv_format_to_sparse(vector,shape):
     if pd.isnull(vector):
         return np.nan
     else:    
-        indices = [int(i.split('->')[0]) for i in vector.split('\t')]
-        indices_x = [0]*len(indices)
-        data = [float(i.split('->')[1]) for i in vector.split('\t')]
+        indices = [int(i.split('->')[0]) for i in vector.split('\t')]#get the indices
+        indices_x = [0]*len(indices)#x axis indices are zero because it is a vector
+        data = [float(i.split('->')[1]) for i in vector.split('\t')]# get the data
         return csr_matrix((data,(indices_x,indices)),shape=shape)
     
 def create_aggregated_versions_of_bow_vector(dataset,bow_vector,aggregate_timesteps = [2,3,4]):
-    """Creation of columns with aggregated versions of a bow feature on a pandas dataframe
+    """ Creation of columns with aggregated versions of a bag-of-words feature on a pandas dataframe
     
     args:
-    dataset -- pandas dataframe that has a sparse bow feature
-    bow_vector -- the bow feature vector
-    aggregate_timesteps --  how many timesteps behind will be aggregated (2 means current and previous), (default:[2,3,4])    
+    dataset -- pandas dataframe that has a sparse bag-of-words feature
+    bow_vector -- the bag-of-words feature column name
+    aggregate_timesteps --  how many timesteps behind will be aggregated (e.g 2 means current and previous), (default:[2,3,4])    
     """
     
     for n in aggregate_timesteps:
@@ -140,7 +113,7 @@ def create_aggregated_versions_of_bow_vector(dataset,bow_vector,aggregate_timest
 
 
 def normalize_bow_feature(dataset,bow_vector,axis = 1,suffix = '_normalized'):
-    """Creation l2 normalization columns of a sparse bow feature on a pandas dataframe
+    """ L2 normalization on a sparse bag-of-words feature on a pandas dataframe
     
     args:
     dataset -- pandas dataframe that has a sparse bow feature
@@ -148,20 +121,20 @@ def normalize_bow_feature(dataset,bow_vector,axis = 1,suffix = '_normalized'):
     axis -- (valid values: (0,1))
     suffix : suffix for the new column name (default: '_normalized')
     """
-    stacked = vstack(dataset[bow_vector].loc[~dataset[bow_vector].isnull()])
+    stacked = vstack(dataset[bow_vector].loc[~dataset[bow_vector].isnull()])#vertical stacking  of all sparse vectors to one universal sparse array (ignoring NaNs)
     dataset[bow_vector+suffix] =dataset[bow_vector]
-    dataset[bow_vector+suffix].loc[~dataset[bow_vector].isnull()] =list(normalize(stacked,norm='l2',axis=1))
+    dataset[bow_vector+suffix].loc[~dataset[bow_vector].isnull()] =list(normalize(stacked,norm='l2',axis=1))#l2 normalization of not NaN rows
     
 def create_dataset_from_csv(path,window,features):
-    """Transform csv files to pandas datasets with proper sparse representation of bow feature and aggregated bow features 
+    """ Transforms csv files to pandas dataframes with proper sparse representation of bag-of-words feature and aggregated versions of them
     
     args:
     path -- the path of the csv file
     window -- window -- the window of the dataset (valid values: 6,12,24)
-    feature -- the sparse bow feature
+    feature -- the sparse bag-of_-ords feature
     
     returns:
-    a pandas dataset
+    a pandas dataframe
     """
     dataset = pd.read_csv(path)
     dataset = create_index_from_timestamps(dataset,window)

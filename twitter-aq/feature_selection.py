@@ -6,7 +6,7 @@ from scipy.sparse import hstack
 import pandas as pd 
 
 def vcorrcoef(X,y):
-    """Computes the vectorized correlation coefficient
+    """ Computes the vectorized correlation coefficient
     
     code taken from here: https://waterprogramming.wordpress.com/2014/06/13/numpy-vectorized-correlation-coefficient/
     

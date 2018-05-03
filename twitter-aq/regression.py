@@ -15,7 +15,7 @@ import sklearn.metrics as sm
 from feature_selection import feature_selection
 
 def training(regressor,xcols,ycol,dataset,mask = None,additional_features = None,keep=None,weights=False,verbose=False):
-    """Training a specified regressor from a pandas dataframe.
+    """ Training a specified regressor from a pandas dataframe.
     
     args:
     regressor -- an sklearn regressor (e.g GradientBoostingRegressor)
@@ -51,7 +51,7 @@ def training(regressor,xcols,ycol,dataset,mask = None,additional_features = None
         print( 'There are no valid training data')
         sys.exit()
     
-    #concat sparse and dense training samples
+    #horizontal contatenation of features (if there is a sparse feature then all features are tranformed to a sparse array)
     processed_predictors=[]   
     sparse = False
     for predictor in predictors:
@@ -66,7 +66,7 @@ def training(regressor,xcols,ycol,dataset,mask = None,additional_features = None
     if sparse:
         X = hstack(processed_predictors)
         if mask is not None:
-            if len(processed_predictors)==1: # apply mask only if there is only one sparse feature
+            if len(processed_predictors)==1: # apply mask only if there is only one sparse feature (did not implement this with other features)
                 X = X[:,mask]
             else:
                 print('MASK NOT APPLIED: there are multiple features')
@@ -104,7 +104,7 @@ def training(regressor,xcols,ycol,dataset,mask = None,additional_features = None
 
 
 def testing(fit,xcols,ycol,dataset,mask = None,additional_features=None,keep=None,classification = False,verbose=False):
-    """Testing a specified regressor from a pandas dataframe.
+    """ Testing a specified regressor from a pandas dataframe.
     
     args:
     fit -- a trained regressor
@@ -261,14 +261,14 @@ def split_dataset_even_odd_months(dataset,odd='train'):
     return (train_dataset,test_dataset)
 
 def create_all_vs_one_datasets(datasets,cities_dict,city,window,weights=None):
-    """Create 'cross city (i.e. all to one)' datasets
+    """ Create 'cross city (i.e. all to one)' datasets
     
     args:
-    city -- the city dataset to be used as testing
+    datasets -- dict containing pandas dataframes from each city and window
     cities_dict -- a dict which as the country code as key (e.g UK) and the list of cities in this country as a value
+    city -- the city name to be used as testing    
     window -- the number of  aggregated timesteps(hours) (valid values: 6,12,24)
-    weights --  if weight is not None then the column weight is added to 
-    the dataframe representing the inverse distance weighting value for each training sample (defaul: None)
+    weights --  an Inverse Distance Weighting dataframe for each city in every country, if weights is not None then the column weight is added to the dataframe representing the inverse distance weighting value for each training sample (defaul: None)
 
     returns:
     a tuple of traing and testing dataframes
@@ -286,13 +286,13 @@ def create_all_vs_one_datasets(datasets,cities_dict,city,window,weights=None):
     for c,city in enumerate(use_cities):
         dataframe = datasets[city+'_'+str(window)]
         if weights is not None:
-            dataframe['weights'] = weight_matrix[c]
+            dataframe['weights'] = weight_matrix[c]#create a weight column with the corresponding wieght of each city if 
         stacked_datasets.append(dataframe)        
     train_dataset = pd.concat(stacked_datasets,axis=0)     
     return (train_dataset,test_dataset)
 
 def create_cv_bow_model(regressor,xcols,ycol,dataset,mask=None,keep=None,weights=False,cv=3,verbose=False):
-    """Create a cross validation model of a bow feature and calculate train predictions
+    """Create a cross validation model of a bog_of_words feature and calculate train predictions
     in order to use them in a two step regression setup
     
     args:
@@ -342,6 +342,7 @@ def create_cv_bow_model(regressor,xcols,ycol,dataset,mask=None,keep=None,weights
         processed_predictors_train=[]    
         processed_predictors_test=[] 
         sparse=False
+        #horizontal contatenation of features (if there is a sparse feature then all features are tranformed to a sparse array)
         for predictor in predictors:
             if isinstance(train_dataset.loc[:,predictor].iloc[0],scipy.sparse.csr.csr_matrix):
                 pred_list_train = train_dataset.loc[:,predictor].tolist()
@@ -391,8 +392,7 @@ def create_cv_bow_model(regressor,xcols,ycol,dataset,mask=None,keep=None,weights
 
 
 def create_second_step_bow_model(regressor,dataset,second_step_features,predictions,weights=False): 
-    """Creation of the second step model using second step feature training data and training predictions
-    from cv bow model
+    """ Creation of the second step model using second step feature training data and training predictions from cv bow model
     
     args:
     regressor --  an sklearn regressor (e.g GradientBoostingRegressor)
@@ -407,6 +407,7 @@ def create_second_step_bow_model(regressor,dataset,second_step_features,predicti
     """ 
     sparse = False
     processed_features = []
+    #horizontal contatenation of features (if there is a sparse feature then all features are tranformed to a sparse array)
     for feature in second_step_features:
         if isinstance(dataset.loc[:,feature].iloc[0],scipy.sparse.csr.csr_matrix):
             pred_list = dataset.loc[:,feature].tolist()
@@ -462,7 +463,7 @@ def get_universal_inverse_distance_weights(cities,distances):
     return weights_frame
 
 def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,features,feature_types,feature_details,representation,regressor,regressor_name,weights=None):
-    """Compute regression results
+    """ Compute regression results
     
     args:
     datasets -- dict containing pandas dataframes from each city and window
@@ -501,13 +502,12 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
         if weights is not None:
             raise Exception('Need to use cross city setup when using weights')
     elif setup == 'cross city (i.e. all to one)':
-        train,test = create_all_vs_one_datasets(datasets,cities_dict,city,window,weights=weights)
-        #maybe normalize axis 0 
+        train,test = create_all_vs_one_datasets(datasets,cities_dict,city,window,weights=weights) 
     
     #check if it is a 2 step regression
     if isinstance(features[0],list):
         two_step = True
-        first_feature = features[0]#feature selection only the first feature
+        first_feature = features[0]#feature selection only for the first feature#(currently implemented  to work only for one bag of words feature)
     else:
         two_step = False
         first_feature = features
@@ -515,9 +515,9 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
     if fs_method != 'NULL':
         if fs_feature_num != 'NULL':
             if len(first_feature) > 1:
-                raise Exception('You have to use only one bow feature for feature selection')
+                raise Exception('You have to use only one bow feature for feature selection') #(currently implemented  to work only for one bag of words feature)
             _,mask = feature_selection(datasets,country,first_feature[0],'pm25',window,method=fs_method)
-            mask = mask[:fs_feature_num]
+            mask = mask[:fs_feature_num]#get the fs_feature_num top features
     else:
         mask = None
         
@@ -558,7 +558,7 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
     setup -- the regression setup (valid values: ('cross city (i.e. all to one)','within city (i.e. same city)'))
     baseline -- string to indicate whether this experiment is baseline or not (used only in results)
     fs_methods -- lists of feature selection methods ('Conly':features with highier correlation with PM2.5 in all cities.(used in paper)
-'                                              'Sonly'':features with lowest correlation variance with PM2.5 in all cities
+                                               'Sonly'':features with lowest correlation variance with PM2.5 in all cities
                                                'S&C':combination of previous methods
                                                'None':No feature selection)
                 or 'None'
@@ -580,26 +580,26 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
                 if fs_methods !='NULL': # feature selecion
                     for fs_method in fs_methods:
                         for fs_feature_num in fs_feature_nums:
-                            if isinstance(regressors[i][0],list):
+                            if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists (same with regressor names)
                                 for r,regressor in enumerate(regressors[i][0]):
                                     regr = [regressors[i][0][r],regressors[i][1][r]]
                                     regr_names = [regressor_names[i][0][r],regressor_names[i][1][r]]
                                     results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,
                                        feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
-                            else:
+                            else:#if it is not a two step regression just test every regressor in the list with his corresponding name
                                 for r,regressor in enumerate(regressors[i]):
                                     regr = regressor
                                     regr_names = regressor_names[i][r]
                                     results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,
                                        feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
-                else:
-                    if isinstance(regressors[i][0],list):
+                else:# no feature selection
+                    if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists (same with regressor names)
                         for r,regressor in enumerate(regressors[i][0]):
                             regr = [regressors[i][0][r],regressors[i][1][r]]
                             regr_names = [regressor_names[i][0][r],regressor_names[i][1][r]]
                             results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,'NULL','NULL',feature,
                                        feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
-                    else:
+                    else:#if it is not a two step regression just test every regressor in the list with his corresponding name
                         for r,regressor in enumerate(regressors[i]):
                             regr = regressor
                             regr_names = regressor_names[i][r]

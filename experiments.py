@@ -61,10 +61,11 @@ def main():
     #calculate inverse distance weight dataframe for all cities
     weights_frame  = get_universal_inverse_distance_weights(cities,[english_distances,american_distances])
     
-    
+    ############################################################### experiment 1 ( within city experiments )################################################################
     print('experiment 1 - within city')
-    
+    #first classifier parameters
     paramsrgs = {'n_estimators': 200,'max_features':0.3,'learning_rate':0.01}
+    #second step classifier parameters (if exists)
     paramsrgs_second = {'n_estimators': 200,'learning_rate':0.01}
     setup='within city (i.e. same city)'
     baseline='no'
@@ -111,6 +112,11 @@ def main():
     results1 = aggregated_regression_experiments(datasets,cities_dict,cities,win,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,
                                           regressors,regressor_names,weights=weights)
     
+    ################################################################ end of experiment 1 ################################################################
+    
+    
+    ################################################################ experiment 2 (cross city experiments) ################################################################
+    
     print('experiment 2 - cross city')    
     setup='cross city (i.e. all to one)'
     weights=weights_frame
@@ -154,6 +160,9 @@ def main():
     # with weighted samples
     results3 = aggregated_regression_experiments(datasets,cities_dict,cities,win,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,
                                           regressors,regressor_names,weights=weights)
+    ################################################################ end of experiment 2 ################################################################
+    
+    ################################################################ experiment 3 ( cross city with feature selection) ################################################################
     
     print('experiment 3 - cross city + feature selection')
     baseline='no'
@@ -202,17 +211,20 @@ def main():
     results5=aggregated_regression_experiments(datasets,cities_dict,cities,win,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,
                                           regressors,regressor_names,weights=weights)
         
+    ################################################################ end of experiment 3 ################################################################
+    
     #save results
     columns = ['country','city','window','setup','baseline','sample_weights','fs_method','feature_number',
                     'feature_type','feature_details','representation','1_step_regressor',
      '2_step_regressor','rmse','mae','precision(high)','recall(high)','f_measure(high)']
 
     results=results1+results2+results3+results4+results5
-    data = np.concatenate(results,axis=0).reshape(-1,len(columns))
-    print(data.shape)
+    data = np.concatenate(results,axis=0).reshape(-1,len(columns))#concat results
+    
+    #create a dataframe and save it to a csv file
     dataframe = pd.DataFrame(data =data,columns=columns)
     dataframe[['rmse','mae','precision(high)','recall(high)','f_measure(high)']] = dataframe[['rmse','mae','precision(high)','recall(high)','f_measure(high)']].astype(np.float64)
-    results_path = 'results/
+    results_path = 'results/'
     if not os.path.exists(results_path):
         os.mkdir(results_path)
     dataframe.to_csv(os.path.join(results_path,'experiments.csv'),index=False)          
