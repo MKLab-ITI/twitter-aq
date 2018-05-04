@@ -19,9 +19,9 @@ datasets_path = 'datasets/'
 zip_files = ['uk_cities.zip','us_cities.zip']
 vocabularies_path = 'datasets/vocabularies/'
 windows = [6,12,24]
-cities = ['London','Manchester','Leeds','Liverpool','Birmingham','Boston','NewYork','Philadelphia','Baltimore','Pittsburgh']
 english_cities = ['London','Manchester','Leeds','Liverpool','Birmingham']
-american_cities = ["Boston","NewYork","Philadelphia","Baltimore","Pittsburgh"]
+american_cities = ['Boston','NewYork','Philadelphia','Baltimore','Pittsburgh']
+cities = english_cities + american_cities
 cities_dict ={'UK':english_cities,'US':american_cities}
 english_distances = [[163,178,169,101],[163,31,35,70],[178,31,64,78],[169,35,64,92],[101,70,78,92]]
 american_distances = [[306,436,579,775],[306,129,272,507],[436,129,144,414],[579,272,144,316],[775,507,414,316]]
@@ -74,28 +74,13 @@ def main():
     fs_feature_nums='NULL'
 
     features= [
-        ['bow_10k_unigrams'],
-        ['bow_10k_unigrams_2'],
-        ['bow_10k_unigrams_3'],
-        ['bow_10k_unigrams_4'],
         ['bow_10k_unigrams_normalized'],
         ['bow_10k_unigrams_2_normalized'],
-        ['bow_10k_unigrams_3_normalized'],
-        ['bow_10k_unigrams_4_normalized'],
-
+        ['bow_10k_unigrams_3_normalized']
     ]
-
-    feature_types = [
-                'BOW','BOW','BOW','BOW','BOW','BOW','BOW','BOW'
-                ]
-
-    feature_details = [
-                 'BOW10k_unigrams', 'BOW10k_unigrams_lag2', 'BOW10k_unigrams_lag3', 'BOW10k_unigrams_lag4', 'BOW10k_unigrams_normalized',
-                    'BOW10k_unigrams_lag2_normalized', 'BOW10k_unigrams_lag3_normalized', 'BOW10k_unigrams_lag4_normalized'
-                ]
-    representations = [
-                'uni_tf','uni_tf','uni_tf','uni_tf','uni_tf','uni_tf','uni_tf','uni_tf',
-    ]
+    feature_types = ['BOW','BOW','BOW']
+    feature_details = ['BOW10k_unigrams_normalized', 'BOW10k_unigrams_lag2_normalized', 'BOW10k_unigrams_lag3_normalized']
+    representations = ['uni_tf','uni_tf','uni_tf']
 
     regressors = [
              [GradientBoostingRegressor(**paramsrgs)]
