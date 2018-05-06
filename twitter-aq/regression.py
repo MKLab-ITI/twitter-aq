@@ -490,7 +490,7 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
     city -- the string name of the city
     window -- the number of  aggregated timesteps(hours) (valid values: 6,12,24)
     setup -- the regression setup (valid values: ('cross city' (i.e. all to one),'within city' (i.e. same city)))
-    baseline -- string to indicate whether this experiment is baseline or not (valid values: 'idw','mean','NULL'))
+    baseline -- string to indicate whether this experiment is baseline, by defining the prediction metric, or not (valid values: 'idw','mean','NULL'))
     fs_method -- the feature selection method ('Conly':features with highier correlation with PM2.5 in all cities.(used in paper),
 '                                              'Sonly'':features with lowest correlation variance with PM2.5 in all cities,
                                                'S&C':combination of previous methods,
@@ -612,7 +612,7 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
     cities -- list of cities
     windows -- list of lists of numbers of  aggregated timesteps(hours) (valid values: 6,12,24)
     setup -- the regression setup (valid values: ('cross city' (i.e. all to one),'within city' (i.e. same city)))
-    baseline -- string to indicate whether this experiment is baseline or not (used only in results)
+    baseline -- string to indicate whether this experiment is baseline, by defining the prediction metric, or not (valid values: 'idw','mean','NULL'))
     fs_methods -- lists of feature selection methods ('Conly':features with highier correlation with PM2.5 in all cities.(used in paper)
                                                'Sonly'':features with lowest correlation variance with PM2.5 in all cities
                                                'S&C':combination of previous methods
