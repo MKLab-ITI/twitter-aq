@@ -1,6 +1,9 @@
 # twitter-aq
 Dataset and code to reproduce results of IVMSP 2018 paper: "Twitter-based Sensing of City-level Air Quality"
 
+## Python version
+The project is compatible with Python `3.5`
+
 ## How to run experiments
 
 * Recreate pandas datasets from `.csv` files using `create_dataset_from_csv(path,window,features)`:

@@ -462,7 +462,26 @@ def get_universal_inverse_distance_weights(cities,distances):
     weights_frame = pd.DataFrame(data = np.concatenate(weights),index=cities)#concat matricies to a dataframe
     return weights_frame
 
-def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,features,feature_types,feature_details,representation,regressor,regressor_name,weights=None):
+
+def get_regressor_name(regressor):
+    """" Helper function to return the regressor name of a sklrearn regressor
+    args:
+    regressor -- an sklearn regressor
+    
+    returns:
+    the string name of the regressor followed by max_features, n_estimators and learning rate attributes if they exist
+    """
+    name = str(regressor).split('(')[0]
+    if hasattr(regressor, 'max_features'):
+        name = name+ '_'+str(regressor.max_features)
+    if hasattr(regressor, 'n_estimators'):
+        name = name+ '_'+str(regressor.n_estimators)
+    if hasattr(regressor, 'learning_rate'):
+        name = name+ '_'+str(regressor.learning_rate)
+    return(name)
+
+
+def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,features,regressor,weights=None):
     """ Compute regression results
     
     args:
@@ -470,19 +489,15 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
     cities_dict -- a dict which as the country code as key (e.g UK) and the list of cities in this country as a value
     city -- the string name of the city
     window -- the number of  aggregated timesteps(hours) (valid values: 6,12,24)
-    setup -- the regression setup (valid values: ('cross city (i.e. all to one)','within city (i.e. same city)'))
-    baseline -- string to indicate whether this experiment is baseline or not (used only in results)
+    setup -- the regression setup (valid values: ('cross city' (i.e. all to one),'within city' (i.e. same city)))
+    baseline -- string to indicate whether this experiment is baseline or not (valid values: 'idw','mean','NULL'))
     fs_method -- the feature selection method ('Conly':features with highier correlation with PM2.5 in all cities.(used in paper),
 '                                              'Sonly'':features with lowest correlation variance with PM2.5 in all cities,
                                                'S&C':combination of previous methods,
                                                'None':No feature selection)
     fs_feature_num -- number of best features to keep after performing feature selection  or 'None'
     features -- list of features in one step regression (e.g ['#aqs','bow_10k_unigrams_normalized']) or list of lists of features for two step regression (e.g [[bow_10k_unigrams_normalized'],['nearby_ground_truth_pm25']])
-    feature_types -- description of the feature (used only in results)
-    feature_details -- details of the feature (used only in results)
-    representation -- the representation of the bow feature
     regressors -- an sklearn regressor for one step regression or a list of two sklearn regressors in two step regression setup
-    regressor_name -- the regressor name for one step regression or a list of two regression names in two step regression setup
     weights -- the inverse distance weight matrix from all cities (used only in cross city setups) in order to weight each training sample when training the model or None
     """
     
@@ -496,22 +511,64 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
     if weights is not None:
         weights_flag = True
     
-    if setup == 'within city (i.e. same city)':
+    if setup == 'within city':
         dataset = datasets[city+'_'+str(window)]
         train,test = split_dataset_even_odd_months(dataset)
         if weights is not None:
             raise Exception('Need to use cross city setup when using weights')
-    elif setup == 'cross city (i.e. all to one)':
+    elif setup == 'cross city':
         train,test = create_all_vs_one_datasets(datasets,cities_dict,city,window,weights=weights) 
-    
+         
     #check if it is a 2 step regression
     if isinstance(features[0],list):
         two_step = True
-        first_feature = features[0]#feature selection only for the first feature#(currently implemented  to work only for one bag of words feature)
+        first_feature = features[0]#feature selection only for the first feature (currently implemented  to work only for one bag of words feature)
+        feature_list = features[0] + features[1]
     else:
         two_step = False
         first_feature = features
-              
+        feature_list = features
+        
+    #check if the experiment is a baseline error computation
+    if baseline != 'NULL':
+        copy_test = test.copy()
+        copy_test = test.dropna()
+        if baseline =='idw':
+            predictions = copy_test['idw_pm25']
+        elif baseline == 'mean':
+            copy_test['mean'] = test.pm25.mean()
+            predictions = copy_test['mean']
+            print
+        else:
+            raise Exception('invalid baseline parameter')
+        copy_test['pm25_cat'] = copy_test.pm25.apply(to_labels)
+        return[country_code,city,window,setup,baseline,'NULL','NULL','NULL','NULL','NULL','NULL','NULL','NULL',
+                                np.sqrt(sm.mean_squared_error(predictions, copy_test.pm25)),sm.mean_absolute_error(predictions, copy_test.pm25),
+                                precision_recall_fscore_support(copy_test.pm25_cat,predictions.apply(to_labels),labels=['good','bad'])[0][1],
+                                precision_recall_fscore_support(copy_test.pm25_cat,predictions.apply(to_labels),labels=['good','bad'])[1][1],
+                                precision_recall_fscore_support(copy_test.pm25_cat,predictions.apply(to_labels),labels=['good','bad'])[2][1]]             
+
+    
+    types = ['BOW','IDW_PM25','Twitter']
+    type_mask =[False,False,False]
+    representation = 'None'
+    for i in feature_list:
+        if 'bow' in i:
+            type_mask[0] = True
+            representation = 'uni_tf' # only this is supported currently
+        elif 'idw' in i:
+            type_mask[1] = True
+        else:
+            type_mask[2] = True
+    feature_types = '+'.join(list(np.array(types)[type_mask])) #join types if they exist
+    feature_details = '+'.join(feature_list)
+    if two_step:
+        feature_details = feature_details+'_2step'
+        regressor_name = [get_regressor_name(regressor[0]),get_regressor_name(regressor[1])]
+    else:
+        regressor_name = get_regressor_name(regressor)
+          
+    #feature selection          
     if fs_method != 'NULL':
         if fs_feature_num != 'NULL':
             if len(first_feature) > 1:
@@ -546,8 +603,7 @@ def compute_regression_results(datasets,cities_dict,city,window,setup,baseline,f
                feature_types,feature_details,representation,regressor_name,'NULL',rmse_res,mae_res,precision[1],recall[1],fscore[1]]
     
     
-def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,baseline,fs_methods,fs_feature_nums,features,feature_types,feature_details,representations,
-                                      regressors,regressor_names,weights=None):
+def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,baseline,fs_methods,fs_feature_nums,features,regressors,weights=None):
     """Run multiple regression experiments
     
     args:
@@ -555,7 +611,7 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
     cities_dict -- a dict which as the country code as key (e.g UK) and the list of cities in this country as a value
     cities -- list of cities
     windows -- list of lists of numbers of  aggregated timesteps(hours) (valid values: 6,12,24)
-    setup -- the regression setup (valid values: ('cross city (i.e. all to one)','within city (i.e. same city)'))
+    setup -- the regression setup (valid values: ('cross city' (i.e. all to one),'within city' (i.e. same city)))
     baseline -- string to indicate whether this experiment is baseline or not (used only in results)
     fs_methods -- lists of feature selection methods ('Conly':features with highier correlation with PM2.5 in all cities.(used in paper)
                                                'Sonly'':features with lowest correlation variance with PM2.5 in all cities
@@ -565,11 +621,7 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
     fs_feature_nums -- list of numbers of best features to keep after performing feature selection or 'None'
     features -- list of lists of features in one step regression (e.g [['#aqs','bow_10k_unigrams_normalized'],['#aqs']]) 
                 or lists of lists of lists of features for two step regression (e.g [[[bow_10k_unigrams_normalized'],['nearby_ground_truth_pm25']],[[#tw'],['nearby_ground_truth_pm25']]])
-    feature_types -- lists of descriptions of the feature (used only in results)
-    feature_details -- lists of details of the feature (used only in results)
-    representations -- lists the representation of the bow feature
     regressors -- list of lists of sklearn regressors for one step regression or a list of lists of lists of sklearn regressors in two step regression setup
-    regressor_name -- list of lists of regressor names for one step regression or a list of lists of lists of regression names in two step regression setup
     weights -- the inverse distance weight matrix from all cities (used only in cross city setups) in order to weight each training sample when training the model or None
     """
     
@@ -580,29 +632,21 @@ def aggregated_regression_experiments(datasets,cities_dict,cities,windows,setup,
                 if fs_methods !='NULL': # feature selecion
                     for fs_method in fs_methods:
                         for fs_feature_num in fs_feature_nums:
-                            if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists (same with regressor names)
+                            if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists 
                                 for r,regressor in enumerate(regressors[i][0]):
                                     regr = [regressors[i][0][r],regressors[i][1][r]]
-                                    regr_names = [regressor_names[i][0][r],regressor_names[i][1][r]]
-                                    results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,
-                                       feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
-                            else:#if it is not a two step regression just test every regressor in the list with his corresponding name
+                                    results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,regr,weights=weights))
+                            else:#if it is not a two step regression just test every regressor in the list 
                                 for r,regressor in enumerate(regressors[i]):
                                     regr = regressor
-                                    regr_names = regressor_names[i][r]
-                                    results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,
-                                       feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
+                                    results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,fs_method,fs_feature_num,feature,regr,weights=weights))
                 else:# no feature selection
-                    if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists (same with regressor names)
+                    if isinstance(regressors[i][0],list):#if it is a two step regression get the r-th regressor each of the two nested lists 
                         for r,regressor in enumerate(regressors[i][0]):
                             regr = [regressors[i][0][r],regressors[i][1][r]]
-                            regr_names = [regressor_names[i][0][r],regressor_names[i][1][r]]
-                            results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,'NULL','NULL',feature,
-                                       feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
-                    else:#if it is not a two step regression just test every regressor in the list with his corresponding name
+                            results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,'NULL','NULL',feature,regr,weights=weights))
+                    else:#if it is not a two step regression just test every regressor in the list 
                         for r,regressor in enumerate(regressors[i]):
                             regr = regressor
-                            regr_names = regressor_names[i][r]
-                            results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,'NULL','NULL',feature,
-                               feature_types[i],feature_details[i],representations[i],regr,regr_names,weights=weights))
+                            results.append(compute_regression_results(datasets,cities_dict,city,window,setup,baseline,'NULL','NULL',feature,regr,weights=weights))
     return results

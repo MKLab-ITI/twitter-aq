@@ -141,6 +141,29 @@ def create_dataset_from_csv(path,window,features):
     for feature in features:
         dataset[feature] = dataset[feature].apply(lambda x: csv_format_to_sparse(x,(1,10000)))
         create_aggregated_versions_of_bow_vector(dataset,feature)
-    dataset = dataset.astype(dtype= {"#aqs":np.float64,"#aqs":np.float64,"#high":np.float64,"#tw":np.float64,"pm25":np.float64,"nearby_ground_truth_pm25":np.float64})
+    dataset = dataset.astype(dtype= {"#aqs":np.float64,"#aqs":np.float64,"#high":np.float64,"#tw":np.float64,"pm25":np.float64,"idw_pm25":np.float64})
     return dataset
+
+def save_results(filename,results):
+    """ Creates a csv file with results to results/ directory
+    
+    args:
+    filename -- the name of the file
+    results -- a list with results
+
+    """
+    #save results
+    columns = ['country','city','window','setup','baseline','sample_weights','fs_method','feature_number',
+                    'feature_type','feature_details','representation','1_step_regressor',
+     '2_step_regressor','rmse','mae','precision(high)','recall(high)','f_measure(high)']
+
+    data = np.concatenate(results,axis=0).reshape(-1,len(columns))#concat results
+    
+    #create a dataframe and save it to a csv file
+    dataframe = pd.DataFrame(data =data,columns=columns)
+    dataframe[['rmse','mae','precision(high)','recall(high)','f_measure(high)']] = dataframe[['rmse','mae','precision(high)','recall(high)','f_measure(high)']].astype(np.float64)
+    results_path = 'results/'
+    if not os.path.exists(results_path):
+        os.mkdir(results_path)
+    dataframe.to_csv(os.path.join(results_path,filename+'.csv'),index=False)       
 
