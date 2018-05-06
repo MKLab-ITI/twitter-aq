@@ -27,7 +27,7 @@ Arguments | Description | Valid values
 `city` | the city to make air quality predictions | a valid city name string
 `window` | the temporal bin size (in hours) | 6, 12, 24
 `setup` | whether to perform within city predictions (using odd months for training and even months for testing) or to perform cross-city predictions (by using `city` dataset for testing and all other datasets for training) | 'cross city' (i.e. all to one),'within city' (i.e. same city)
-`baseline` | string to indicate whether this experiment is baseline, by defining the prediction metric, or not | used only for agreggating results
+`baseline` | string to indicate whether this experiment is baseline, by defining the prediction metric, or not | 'idw','mean','NULL'
 `fs_method` | the feature selection method | 'Conly':features with highiest correlation with PM2.5 (*used in paper*),<br />'Sonly'':features with lowest correlation variance with PM2.5,<br />'S&C':combination of previous methods,<br />'None':No feature selection
 `fs_feature_num` | number of best features to keep after performing feature selection | *e.g* 100,500,'None'
 `features` | features to use for training the regression model. if a single list is supplied, one regression model is built on a concatenated feature vector. if multiple lists are supplied, the outputs of the individual regression models are used as inputs in a second-stage regression model | one step regression (*e.g* ['#aqs','bow_10k_unigrams'])<br /> two step regression (*e.g* [[bow_10k_unigrams'],['nearby_ground_truth_pm25']])
