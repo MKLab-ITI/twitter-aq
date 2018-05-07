@@ -184,9 +184,9 @@ def main():
 
             features= [
                 #two step regressions
-                [['bow_10k_unigrams_normalized'],['nearby_ground_truth_pm25']],
-                [['bow_10k_unigrams_2_normalized'],['nearby_ground_truth_pm25']],
-                [['bow_10k_unigrams_3_normalized'],['nearby_ground_truth_pm25']],
+                [['bow_10k_unigrams_normalized'],['idw_pm25']],
+                [['bow_10k_unigrams_2_normalized'],['idw_pm25']],
+                [['bow_10k_unigrams_3_normalized'],['idw_pm25']],
             ]
 
             regressors = [
@@ -218,9 +218,9 @@ def main():
             fs_feature_nums=[20,50,100,500,1000]
 
             features= [
-                [['bow_10k_unigrams_normalized'],['nearby_ground_truth_pm25']],
-                [['bow_10k_unigrams_2_normalized'],['nearby_ground_truth_pm25']],
-                [['bow_10k_unigrams_3_normalized'],['nearby_ground_truth_pm25']],
+                [['bow_10k_unigrams_normalized'],['idw_pm25']],
+                [['bow_10k_unigrams_2_normalized'],['idw_pm25']],
+                [['bow_10k_unigrams_3_normalized'],['idw_pm25']],
             ]
 
             regressors = [

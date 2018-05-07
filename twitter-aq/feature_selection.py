@@ -27,7 +27,7 @@ def feature_selection(datasets,cities,bow_features_column,target_column,window,m
     bow_features_column -- the column name of the bow feature
     target_column -- the ground truth column name
     window -- the number of  aggregated timesteps(hours) (valid values: 6,12,24)
-    method -- the feature selection method (valid values: 'Conly','S&C','Sonly','Conly_changed','Conly')
+    method -- the feature selection method (valid values: 'Conly','NULL' --- experimental -> 'S&C','Sonly','Conly_changed','Conly_a')
     
     returns:
     a tuple containing a list of the feature scores in descending order and a list with their respective indices
